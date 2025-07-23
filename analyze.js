@@ -1,6 +1,6 @@
 import { inspect } from 'util'; // or: import util from 'util'
-import printNova from './printNova.js';
-import { parseInit } from './myteParse.js'
+// import printNova from './printNova.js';
+// import { parseInit } from './myteParse.js'
 
 
 function sugar(s, b) {
@@ -54,13 +54,13 @@ let pop = (stack) => stacks[stack].pop();
 class Fact {
 	stack;
 	fact;
-	vars = new Set();
+	// vars = new Set();
 	constructor(stack, items) {
 		let tmp;
 		this.stack  = stack;
 		this.fact = 
 			(typeof items == 'string' ? items.split(' ') : items)
-			.map(x => isVar(x) ? (tmp=new Var(x), vars.add(tmp), tmp) : x);
+			// .map(x => isVar(x) ? (tmp=new Var(x), vars.add(tmp), tmp) : x);
 	}
 }
 
@@ -72,12 +72,12 @@ class Rule {
 	constructor(causes, effects) {
 		this.causes  = causes;
 		this.effects = effects;
-		let vars = {}
-		this.causes.forEach(fact => fact.fact = fact.fact.map(
-		tok => isVar(tok) ? (vars[tok] = new Var(tok)) : tok))
+		// let vars = {}
+		// this.causes.forEach(fact => fact.fact = fact.fact.map(
+		// tok => isVar(tok) ? (vars[tok] = new Var(tok)) : tok))
 
-		this.effects.forEach(fact => fact.fact = fact.fact.map(
-		tok => isVar(tok) ? (vars[tok] ?? new GeneratedVar(tok)) : tok))
+		// this.effects.forEach(fact => fact.fact = fact.fact.map(
+		// tok => isVar(tok) ? (vars[tok] ?? new GeneratedVar(tok)) : tok))
 	}
 }
 
@@ -148,9 +148,9 @@ class PortEffect extends Array {
 }
 
 
-const { parseMyteSyntaxFile, parseMyteSyntax } = parseInit({Rule, Fact});
+// const { parseMyteSyntaxFile, parseMyteSyntax } = parseInit({Rule, Fact});
 
-isVar = v => v instanceof Var;
+// isVar = v => v instanceof Var;
 // rule effects and causes must be in the correct order for popping and pushing
 // strides, kept causes, etc. must be compiled to plain facts
 // ie. a kept cause should be added to front the effects side 
@@ -293,14 +293,33 @@ function propagate(fact, rule) {
 // `)
 
 
-let rules = await parseMyteSyntaxFile('./example.nv')
+// let rules = await parseMyteSyntaxFile('./example.nv')
+let rules = [ 
+	new Rule([new Fact('', '$v a b c')], [new Fact('', 'a $v b c')]),
+	new Rule([new Fact('', 'a $v b c')], [new Fact('', 'a b $v c')]),
+	new Rule([new Fact('', 'a b $v c')], [new Fact('', 'a b c $v')]),
+	new Rule([new Fact('', 'a b c $v')], [new Fact('', 'result $v')]),
+]
 
-push('start: yoyoyo')
-push(': num 5')
-push(': num 6')
-push(': num 7')
+push(': 1 a b c')
+push(': a 2 b c')
+push(': a b 3 c')
+push(': a b c 4')
+// push('start: yoyoyo')
+// push(': num 5')
+// push(': num 6')
+// push(': num 7')
 
 ////// dynamic language shenanigans
+for (let rule of rules) {
+	let vars = {}
+	rule.causes.forEach(fact => fact.fact = fact.fact.map(
+	tok => isVar(tok) ? (vars[tok] = new Var(tok)) : tok))
+
+	rule.effects.forEach(fact => fact.fact = fact.fact.map(
+	tok => isVar(tok) ? (vars[tok] ?? new GeneratedVar(tok)) : tok))
+}
+isVar = v => v instanceof Var;
 //////
 
 console.log('initial stacks')
@@ -370,9 +389,10 @@ for (let fact of toPropagate.values()) {
 }
 
 // dead code removal
+// console.log(rules)
 let aliveRules = rules.filter(x => x.triggered);
 
-console.log(toPropagate)
+// console.log(toPropagate)
 for (const rule of aliveRules) {
 	for (const effect of rule.effects) {
 		for (let i = 0; i < rules.length; i++) {
@@ -404,13 +424,43 @@ Reflect.defineProperty(Var.prototype, 'toString', { value: function() {
 // 	items.forEach(fact => toPropagate.add(new Fact(stack, fact)))
 // }
 
+// for (const rule of rules) {
+// 	printNova.printRule(rule)
+// 	for (const cause of rule.causes) {
+// 		console.log(cause)
+// 		cause.fact.values().filter(isVar).forEach(
+// 			x=> console.log(x)
+// 		)
+// 	}
+// }
+
+
+const formatFact = f => `:${f.stack}: ` + f.fact.join(' ');
+
 for (const rule of rules) {
-	printNova.printRule(rule)
+	// printNova.printRule(rule)
+	// console.log(rule)
+	let out = ''
+	out+='|'
+	let log = (...args) => args.forEach(x=>out+=x)
 	for (const cause of rule.causes) {
-		console.log(cause)
+		log('  ', formatFact(cause))
+	}
+	log('|')
+	for (const effect of rule.effects) {
+		log('  ', formatFact(effect))
+	}
+	log('\n')
+	for (const cause of rule.causes) {
 		cause.fact.values().filter(isVar).forEach(
-			x=> console.log(x)
+			x=> {
+				if (x.potentialValues)
+					log('  ', x.name, '=', Array.from(x.potentialValues))
+				else 
+					log('  ', x.name)
+			}
 		)
 	}
+	console.log(out)
 }
 
