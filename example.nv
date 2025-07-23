@@ -1,0 +1,7 @@
+|| :@include: lib/math.nv
+| :: add a and b? :a: $a :b: $b | :@math: add $a $b
+| :: add a and b :@math: $ans | :: a plus b is $ans
+
+|| :a: 5 :b: 7
+|| :: add a and b
+
