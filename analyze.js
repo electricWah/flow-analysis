@@ -2,55 +2,6 @@ import { inspect } from 'util'; // or: import util from 'util'
 import printNova from './printNova.js';
 import { parseInit } from './myteParse.js'
 
-
-function sugar(s, b) {
-	if (typeof b == 'string') {
-		return new Rule(s.split('|').map(sugar), b.split('|').map(sugar));
-	}
-
-	let a = s.split(':');
-	let stack = a[0].trim();
-	let fact = a[1].trim().split(' ')
-	return new Fact(stack, fact);
-}
-
-
-// Set the default depth to null to remove the recursion limit.
-// All  subsequent console.log() and console.dir() calls will use this default.
-inspect.defaultOptions.depth = 5
-
-
-/**
- * @param {string} items
- * @param {string} stack
- */
-
-function printStacks(stacks) {
-	Object.entries(stacks).forEach(([key, value]) => {
-		console.log(':' + key + ':');
-		value.toReversed().forEach(x => console.log('\t',x))
-	})
-	console.log()
-}
-
-let isVar = v => (typeof v == 'string' && v.startsWith('$'));
-
-let stacks = {}
-let push = (stack, item) => {
-	if (!item && typeof stack == "string") stack = sugar(stack)
-	if (stack instanceof Fact) {
-		item = stack.fact;
-		stack = stack.stack
-	}
-	stacks[stack] ??= [];
-	stacks[stack].push(item)
-}
-let pop = (stack) => stacks[stack].pop();
-
-
-// function Fact(stack, items) { return { stack: stack, fact: items.split(' ') } };
-
-
 let factId = 0;
 class Fact {
 	stack;
@@ -133,7 +84,7 @@ class PortResultPlaceholder {
 	// can also make a PortCause object to get var values
 	// then it would directly pop them during doRule
 	giveVars(vars) {
-		console.log('called')
+		// console.log('called')
 		for (const v in this.vars) {
 			this.vars[v] = vars[v];
 		}
@@ -161,8 +112,58 @@ class PortEffect extends Array {
 	}
 }
 
+function sugar(s, b) {
+	if (typeof b == 'string') {
+		return new Rule(s.split('|').map(sugar), b.split('|').map(sugar));
+	}
 
+	let a = s.split(':');
+	let stack = a[0].trim();
+	let fact = a[1].trim().split(' ')
+	return new Fact(stack, fact);
+}
+
+
+// Set the default depth to null to remove the recursion limit.
+// All  subsequent console.log() and console.dir() calls will use this default.
+inspect.defaultOptions.depth = 5
+
+
+/**
+ * @param {string} items
+ * @param {string} stack
+ */
+
+function printStacks(stacks) {
+	Object.entries(stacks).forEach(([key, value]) => {
+		console.log(':' + key + ':');
+		value.toReversed().forEach(x => console.log('\t',x))
+	})
+	console.log()
+}
+
+let isVar = v => (typeof v == 'string' && v.startsWith('$'));
+
+let stacks = {}
 // const { parseMyteSyntaxFile, parseMyteSyntax } = parseInit({Rule, Fact});
+// let { rules, stacks } = await parseMyteSyntaxFile('./greek-salad.nv')
+debugger;
+let push = (stack, item) => {
+	if (!item && typeof stack == "string") stack = sugar(stack)
+	if (stack instanceof Fact) {
+		item = stack.fact;
+		stack = stack.stack
+	}
+	stacks[stack] ??= [];
+	stacks[stack].push(item)
+}
+let pop = (stack) => stacks[stack].pop();
+
+
+// function Fact(stack, items) { return { stack: stack, fact: items.split(' ') } };
+
+
+
 
 // isVar = v => v instanceof Var;
 // rule effects and causes must be in the correct order for popping and pushing
@@ -229,6 +230,7 @@ const matchTypes = {
 	conditional: 'conditional',
 	noMatch: false
 }
+
 function couldMatch(fact, rule) {
 	causeLoop:
 	for (const cause of rule.causes) {
@@ -249,7 +251,7 @@ function couldMatch(fact, rule) {
 				// symbol, but what if it just hasn't propagated yet?
 				// ---
 				// This is actually what we want. We want to delay matching until the right symbol has propagated. The system keps running until all values are propagated (ie. fixpoint is reached), so if it is possible to propagate, *it will propagate and match eventually*. If we don't wait until then, we will match places we shouldn't. We only allow matches conservatively if the symbol propagation hasn't started yet.
-				// TODO if value matches, promote to unconditional match
+				// NOTE if value matches, it might be promoted to an unconditional match. The semantics are a bit weird but it works
 				if (fact.fact[i].potentialValues && !fact.fact[i].potentialValues.has(pattern[i]))
 					continue causeLoop;
 				matchType = matchTypes.conditional;
@@ -308,7 +310,6 @@ function propagate(fact, rule) {
 // `)
 
 
-// // let rules = await parseMyteSyntaxFile('./example.nv')
 // let rules = [ 
 // 	new Rule([new Fact('', '$v a b c')], [new Fact('', 'a $v b c')]),
 // 	new Rule([new Fact('', 'a $v b c')], [new Fact('', 'a b $v c')]),
@@ -355,8 +356,8 @@ for (let rule of rules) {
 isVar = v => v instanceof Var;
 //////
 
-console.log('initial stacks')
-printStacks(stacks)
+//console.log('initial stacks')
+// printStacks(stacks)
 
 
 ////////////////////
@@ -396,6 +397,10 @@ function shouldBePropagated (fact) {
 	if (!a) {
 		return true;
 	}
+	if (b == 0) {
+		return false;
+	}
+
 	if (a > b) throw new Error('fact somehow lost symbols? where did they go?')
 	if (a == b) return false;
 
@@ -417,36 +422,38 @@ for (let fact of toPropagate.values()) {
 	fact.nextRules ??= Object.groupBy(rules, rule => (comparisons++, couldMatch(fact, rule)))
 	delete fact.nextRules.false; // remove non-matches
 	
-	// // does the same thing as the above 2 lines
-	// if (!fact.nextRules) {
-	// 	fact.nextRules = {};
-	// 	fact.nextRules.conditional = [];
-	// 	fact.nextRules.unconditional = [];
-	// 	for (const rule of rules) {
-	// 		comparisons++;
-	// 		switch (couldMatch(fact, rule)) {
-	// 			case matchTypes.conditional:				 
-	// 				fact.nextRules.conditional.push(rule);
-	// 				break;
-	// 			case matchTypes.unconditional:				 
-	// 				fact.nextRules.unconditional.push(rule);
-	// 				break;
-	// 		}
-	// 	}
-	// }
+	/*
+	// does the same thing as the above 2 lines
+	if (!fact.nextRules) {
+		fact.nextRules = {};
+		fact.nextRules.conditional = [];
+		fact.nextRules.unconditional = [];
+		for (const rule of rules) {
+			comparisons++;
+			switch (couldMatch(fact, rule)) {
+				case matchTypes.conditional:				 
+					fact.nextRules.conditional.push(rule);
+					break;
+				case matchTypes.unconditional:				 
+					fact.nextRules.unconditional.push(rule);
+					break;
+			}
+		}
+	}
+	//*/
 
 	function propagateRule (fact, rule) {
 		propagate(fact, rule);
-		debugger;
+		// debugger;
 		rule.effects.forEach(x => toPropagate.add(x));
 		rule.triggered = true;
 		fact.propagated = true;
 		propagated = true;
 	}
-
-	fact.nextRules.unconditional ??= []
-	for (const rule of fact.nextRules.unconditional) {
-		propagateRule(fact, rule)
+	if (fact.nextRules.unconditional) {
+		for (const rule of fact.nextRules.unconditional) {
+			propagateRule(fact, rule)
+		}
 	}
 	if (fact.nextRules.conditional) {
 		let conditioni = 0;
@@ -465,8 +472,7 @@ for (let fact of toPropagate.values()) {
 	if (propagated)
 		markPropagated(fact);
 }
-console.log("comparisons:", comparisons)
-// console.log(rules.length)
+console.error("comparisons:", comparisons)
 debugger;
 // i'm 90% sure that according to the Set.values() spec, the above loop terminating
 // means the system is at fixed point (ie. it's done cooking). need to verify
@@ -485,33 +491,35 @@ for (const rule of rules) {
 	}
 }
 
+/*
+{
+	// dead code removal
+	//// console.log(rules)
+	let aliveRules = rules.filter(x => x.triggered);
+	//console.log(aliveRules.length, rules.length)
 
-// dead code removal
-// console.log(rules)
-let aliveRules = rules.filter(x => x.triggered);
-console.log(aliveRules.length, rules.length)
-
-// console.log(toPropagate)
-for (const rule of aliveRules) {
-	for (const effect of rule.effects) {
-		for (let i = 0; i < aliveRules.length; i++) {
-			if (couldMatch(effect, aliveRules[i])) {
-				if (shouldBePropagated(effect)) {
-					console.log('uh oh')
-					propagate(effect, aliveRules[i])
-				}
-			}
-		}
-	}
-	// console.log(rule.effects)
-	// console.log(rule.nextRules)
+	// // console.log(toPropagate)
+	 for (const rule of aliveRules) {
+		 for (const effect of rule.effects) {
+			 for (let i = 0; i < aliveRules.length; i++) {
+				 if (couldMatch(effect, aliveRules[i])) {
+					 if (shouldBePropagated(effect)) {
+	//					 console.log('uh oh')
+						 propagate(effect, aliveRules[i])
+					 }
+				 }
+			 }
+		 }
+	//	 // console.log(rule.effects)
+	//	 // console.log(rule.nextRules)
+	 }
 }
-
-// console.log(rules)
+*/
+//// console.log(rules)
 ////////////////////
 // rules.forEach(doRule);
 
-console.log('end stacks')
+//console.log('end stacks')
 printStacks(stacks)
 
 
@@ -520,7 +528,7 @@ Reflect.defineProperty(Var.prototype, 'toString', { value: function() {
 }})
 
 // printNova(stacks, rules);
-// console.log(stacks[''].pop())
+//// console.log(stacks[''].pop())
 
 // for (const [stack, items] of Object.entries(stacks)) {
 // 	items.forEach(fact => toPropagate.add(new Fact(stack, fact)))
@@ -529,41 +537,49 @@ Reflect.defineProperty(Var.prototype, 'toString', { value: function() {
 // for (const rule of rules) {
 // 	printNova.printRule(rule)
 // 	for (const cause of rule.causes) {
-// 		console.log(cause)
+//// 		console.log(cause)
 // 		cause.fact.values().filter(isVar).forEach(
-// 			x=> console.log(x)
+//// 			x=> console.log(x)
 // 		)
 // 	}
 // }
 
-
+ 
 const formatFact = f => `:${f.stack}: ` + f.fact.join(' ');
 
-for (const rule of rules) {
-	// printNova.printRule(rule)
-	// console.log(rule)
-	let out = ''
-	out+='|'
-	let log = (...args) => args.forEach(x=>out+=x)
-	for (const cause of rule.causes) {
-		log('  ', formatFact(cause))
-	}
-	log('  |')
-	for (const effect of rule.effects) {
-		log('  ', formatFact(effect))
-	}
-	log('\n')
-	for (const cause of rule.causes) {
-		cause.fact.values().filter(isVar).forEach(
+function printNovaWithVarValues() {
+	for (const rule of rules) {
+		// printNova.printRule(rule)
+		// console.log(rule)
+		let out = ''
+		out+='|'
+		let log = (...args) => args.forEach(x=>out+=x)
+		for (const cause of rule.causes) {
+			log('  ', formatFact(cause))
+		}
+		log('  |')
+		for (const effect of rule.effects) {
+			log('  ', formatFact(effect))
+		}
+		log('\n')
+		for (const cause of rule.causes) {
+			cause.fact.values().filter(isVar).forEach(
 			x=> {
 				if (x.potentialValues)
-					log('  ', x.name, '=', Array.from(x.potentialValues))
+					log('  |# ', x.name, '=', Array.from(x.potentialValues))
 				else 
-					log('  ', x.name)
-				log('\n')
+					log('  |# ', x.name)
+				log(' #|\n')
 			}
-		)
+			)
+		}
+		console.log(out)
 	}
-	console.log(out)
 }
 
+// 0,.g;console\.log;norm I//
+
+//*
+printNovaWithVarValues()
+printNova.printInitFacts(stacks)
+//*/

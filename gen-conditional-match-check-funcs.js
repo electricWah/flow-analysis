@@ -2,55 +2,6 @@ import { inspect } from 'util'; // or: import util from 'util'
 import printNova from './printNova.js';
 import { parseInit } from './myteParse.js'
 
-
-function sugar(s, b) {
-	if (typeof b == 'string') {
-		return new Rule(s.split('|').map(sugar), b.split('|').map(sugar));
-	}
-
-	let a = s.split(':');
-	let stack = a[0].trim();
-	let fact = a[1].trim().split(' ')
-	return new Fact(stack, fact);
-}
-
-
-// Set the default depth to null to remove the recursion limit.
-//// All  subsequent console.log() and console.dir() calls will use this default.
-inspect.defaultOptions.depth = 5
-
-
-/**
- * @param {string} items
- * @param {string} stack
- */
-
-function printStacks(stacks) {
-	Object.entries(stacks).forEach(([key, value]) => {
-		//console.log(':' + key + ':');
-		//value.toReversed().forEach(x => console.log('\t',x))
-	})
-	//console.log()
-}
-
-let isVar = v => (typeof v == 'string' && v.startsWith('$'));
-
-// let stacks = {}
-let push = (stack, item) => {
-	if (!item && typeof stack == "string") stack = sugar(stack)
-	if (stack instanceof Fact) {
-		item = stack.fact;
-		stack = stack.stack
-	}
-	stacks[stack] ??= [];
-	stacks[stack].push(item)
-}
-let pop = (stack) => stacks[stack].pop();
-
-
-// function Fact(stack, items) { return { stack: stack, fact: items.split(' ') } };
-
-
 let factId = 0;
 class Fact {
 	stack;
@@ -133,7 +84,7 @@ class PortResultPlaceholder {
 	// can also make a PortCause object to get var values
 	// then it would directly pop them during doRule
 	giveVars(vars) {
-		//console.log('called')
+		// console.log('called')
 		for (const v in this.vars) {
 			this.vars[v] = vars[v];
 		}
@@ -161,8 +112,58 @@ class PortEffect extends Array {
 	}
 }
 
+function sugar(s, b) {
+	if (typeof b == 'string') {
+		return new Rule(s.split('|').map(sugar), b.split('|').map(sugar));
+	}
 
+	let a = s.split(':');
+	let stack = a[0].trim();
+	let fact = a[1].trim().split(' ')
+	return new Fact(stack, fact);
+}
+
+
+// Set the default depth to null to remove the recursion limit.
+// All  subsequent console.log() and console.dir() calls will use this default.
+inspect.defaultOptions.depth = 5
+
+
+/**
+ * @param {string} items
+ * @param {string} stack
+ */
+
+function printStacks(stacks) {
+	Object.entries(stacks).forEach(([key, value]) => {
+		console.log(':' + key + ':');
+		value.toReversed().forEach(x => console.log('\t',x))
+	})
+	console.log()
+}
+
+let isVar = v => (typeof v == 'string' && v.startsWith('$'));
+
+// let stacks = {}
 const { parseMyteSyntaxFile, parseMyteSyntax } = parseInit({Rule, Fact});
+let { rules, stacks } = await parseMyteSyntaxFile('./greek-salad.nv')
+debugger;
+let push = (stack, item) => {
+	if (!item && typeof stack == "string") stack = sugar(stack)
+	if (stack instanceof Fact) {
+		item = stack.fact;
+		stack = stack.stack
+	}
+	stacks[stack] ??= [];
+	stacks[stack].push(item)
+}
+let pop = (stack) => stacks[stack].pop();
+
+
+// function Fact(stack, items) { return { stack: stack, fact: items.split(' ') } };
+
+
+
 
 // isVar = v => v instanceof Var;
 // rule effects and causes must be in the correct order for popping and pushing
@@ -190,9 +191,9 @@ function doRule(rule) {
 			return false;
 	}
 	for (const cause of rule.causes) {
-		//// console.log('cause:', cause)
+		// console.log('cause:', cause)
 		let v = pop(cause.stack)
-		//// console.log(v)
+		// console.log(v)
 		let pattern = cause.fact;
 		for (let i = 0; i < pattern.length; i++) {
 			let item = pattern[i];
@@ -201,9 +202,9 @@ function doRule(rule) {
 			}
 		}
 	}
-	//// console.log(vars)
+	// console.log(vars)
 	for (const effect of rule.effects) {
-		//// console.log('effect:', effect)
+		// console.log('effect:', effect)
 		let fact = Array.from(effect.fact); // copy
 		for (let i = 0; i < fact.length; i++) {
 			if (isVar(fact[i])) {
@@ -243,7 +244,6 @@ function couldMatch(fact, rule) {
 				continue
 
 			// unknown if fact var will match
-			// TODO optimize by tracing flow of symbols
 			// can deduce possible tokens and reject the match here
 			if (isVar(fact.fact[i])) {
 				// is this correct? Ans: YES!
@@ -251,6 +251,7 @@ function couldMatch(fact, rule) {
 				// symbol, but what if it just hasn't propagated yet?
 				// ---
 				// This is actually what we want. We want to delay matching until the right symbol has propagated. The system keps running until all values are propagated (ie. fixpoint is reached), so if it is possible to propagate, *it will propagate and match eventually*. If we don't wait until then, we will match places we shouldn't. We only allow matches conservatively if the symbol propagation hasn't started yet.
+				// NOTE if value matches, it might be promoted to an unconditional match. The semantics are a bit weird but it works
 				if (fact.fact[i].potentialValues && !fact.fact[i].potentialValues.has(pattern[i]))
 					continue causeLoop;
 				matchType = matchTypes.conditional;
@@ -345,10 +346,6 @@ function propagate(fact, rule) {
 // `)
 
 
-// let { rules, stacks } = await parseMyteSyntaxFile('./greek-salad.nv')
-let { rules, stacks } = await parseMyteSyntaxFile('./greek-salad.nv')
-debugger;
-//// console.log(rules)
 // let rules = [ 
 // 	new Rule([new Fact('', '$v a b c')], [new Fact('', 'a $v b c')]),
 // 	new Rule([new Fact('', 'a $v b c')], [new Fact('', 'a b $v c')]),
@@ -356,22 +353,25 @@ debugger;
 // 	new Rule([new Fact('', 'a b c $v')], [new Fact('', 'result $v')]),
 // ]
 
-// /** 
-//  * @type {Rule[]} rules
-//  */
-// let rules = [
-// 	// sugar('start: yoyoyo | : num $x', ': processed $x'),
-// 	// sugar(': do thing $x', ': num $x'),
-// 	// sugar(': other thing $x', ': num $x'),
-// 	// sugar(': other thing $x $y', ': $y $x'),
-// 	// sugar(': processed $x','out: $x | : num $x'),
-// 	sugar('testtrigger: $x ', 'test: $x $gen'),
-// 	sugar('test: unique $val', 'testout: triggered $val'),
-// 	sugar('testout: $x $_', 'testout: yo terminate terminate'),
-// ];
+/** 
+ * @type {Rule[]} rules
+ */
+/*
+let rules = [
+	// sugar('start: yoyoyo | : num $x', ': processed $x'),
+	// sugar(': do thing $x', ': num $x'),
+	// sugar(': other thing $x', ': num $x'),
+	// sugar(': other thing $x $y', ': $y $x'),
+	// sugar(': processed $x','out: $x | : num $x'),
 
-// push('testtrigger: yoyoyo')
-// push('testtrigger: unique')
+	sugar('testtrigger: $x ', 'test: $x $gen'),
+	sugar('test: unique $val', 'testout: triggered $val'),
+	sugar('testout: $x $_', 'testout: yo terminate terminate'),
+];
+
+push('testtrigger: yoyoyo')
+push('testtrigger: unique')
+//*/
 
 // push(': 1 a b c')
 // push(': a 2 b c')
@@ -395,7 +395,7 @@ isVar = v => v instanceof Var;
 //////
 
 //console.log('initial stacks')
-printStacks(stacks)
+// printStacks(stacks)
 
 
 ////////////////////
@@ -406,9 +406,9 @@ printStacks(stacks)
 // if a cause matches, add the matching token to each var's list 
 // of potential matches and propagate that to the effects
 
-//// console.log(rules[0])
-//// console.log(couldMatch(new Fact('', stacks[''][0]), rules[0]))
-//// console.log(rules)
+// console.log(rules[0])
+// console.log(couldMatch(new Fact('', stacks[''][0]), rules[0]))
+// console.log(rules)
 
 // only possible values are propagated
 // additional symbols not represented in the source code (ie. from ports, external input) need to be added here 
@@ -448,7 +448,7 @@ function shouldBePropagated (fact) {
 }
 
 let comparisons = 0;
-// debugger;
+debugger;
 for (let fact of toPropagate.values()) {
 	toPropagate.delete(fact);
 	if (!shouldBePropagated(fact)) {
@@ -460,12 +460,12 @@ for (let fact of toPropagate.values()) {
 	// fact.nextRules ??= Object.groupBy(rules, rule => couldMatch(fact, rule))
 	// delete fact.nextRules.false; // remove non-matches
 	
+	//*
 	// does the same thing as the above 2 lines
 	if (!fact.nextRules) {
 		fact.nextRules = {};
 		fact.nextRules.conditional = [];
 		fact.nextRules.unconditional = [];
-		
 		fact.checkConditionalFuncs = new Map();
 		for (const rule of rules) {
 			comparisons++;
@@ -480,6 +480,7 @@ for (let fact of toPropagate.values()) {
 			}
 		}
 	}
+	//*/
 
 	function propagateRule (fact, rule) {
 		propagate(fact, rule);
@@ -495,19 +496,25 @@ for (let fact of toPropagate.values()) {
 		}
 	}
 	if (fact.nextRules.conditional) {
+		let conditioni = 0;
 		for (const rule of fact.nextRules.conditional) { 
 			comparisons++;
 			if (couldMatch(fact, rule)) {
 			// if (fact.checkConditionalFuncs[rule]()) {
 				propagateRule(fact, rule)
+				// NOTE we don't need to test this rule again,
+				// so we can promote it to unconditional
+				delete fact.nextRules.conditional[conditioni];
+				fact.nextRules.unconditional.push(rule);
 			}
+			conditioni++;
 		}
 	}
 	if (propagated)
 		markPropagated(fact);
 }
 console.error("comparisons:", comparisons)
-// debugger;
+debugger;
 // i'm 90% sure that according to the Set.values() spec, the above loop terminating
 // means the system is at fixed point (ie. it's done cooking). need to verify
 // though
@@ -525,29 +532,30 @@ for (const rule of rules) {
 	}
 }
 
-
+/*
 {
 	// dead code removal
 	//// console.log(rules)
 	let aliveRules = rules.filter(x => x.triggered);
 	//console.log(aliveRules.length, rules.length)
 
-	//// // console.log(toPropagate)
-	// for (const rule of aliveRules) {
-	//	 for (const effect of rule.effects) {
-	//		 for (let i = 0; i < aliveRules.length; i++) {
-	//			 if (couldMatch(effect, aliveRules[i])) {
-	//				 if (shouldBePropagated(effect)) {
-	////					 console.log('uh oh')
-	//					 propagate(effect, aliveRules[i])
-	//				 }
-	//			 }
-	//		 }
-	//	 }
-	////	 // console.log(rule.effects)
-	////	 // console.log(rule.nextRules)
-	// }
+	// // console.log(toPropagate)
+	 for (const rule of aliveRules) {
+		 for (const effect of rule.effects) {
+			 for (let i = 0; i < aliveRules.length; i++) {
+				 if (couldMatch(effect, aliveRules[i])) {
+					 if (shouldBePropagated(effect)) {
+	//					 console.log('uh oh')
+						 propagate(effect, aliveRules[i])
+					 }
+				 }
+			 }
+		 }
+	//	 // console.log(rule.effects)
+	//	 // console.log(rule.nextRules)
+	 }
 }
+*/
 //// console.log(rules)
 ////////////////////
 // rules.forEach(doRule);
@@ -577,25 +585,26 @@ Reflect.defineProperty(Var.prototype, 'toString', { value: function() {
 // 	}
 // }
 
-
+ 
 const formatFact = f => `:${f.stack}: ` + f.fact.join(' ');
 
-for (const rule of rules) {
-	// printNova.printRule(rule)
-	// console.log(rule)
-	let out = ''
-	out+='|'
-	let log = (...args) => args.forEach(x=>out+=x)
-	for (const cause of rule.causes) {
-		log('  ', formatFact(cause))
-	}
-	log('  |')
-	for (const effect of rule.effects) {
-		log('  ', formatFact(effect))
-	}
-	log('\n')
-	for (const cause of rule.causes) {
-		cause.fact.values().filter(isVar).forEach(
+function printNovaWithVarValues() {
+	for (const rule of rules) {
+		// printNova.printRule(rule)
+		// console.log(rule)
+		let out = ''
+		out+='|'
+		let log = (...args) => args.forEach(x=>out+=x)
+		for (const cause of rule.causes) {
+			log('  ', formatFact(cause))
+		}
+		log('  |')
+		for (const effect of rule.effects) {
+			log('  ', formatFact(effect))
+		}
+		log('\n')
+		for (const cause of rule.causes) {
+			cause.fact.values().filter(isVar).forEach(
 			x=> {
 				if (x.potentialValues)
 					log('  |# ', x.name, '=', Array.from(x.potentialValues))
@@ -603,11 +612,15 @@ for (const rule of rules) {
 					log('  |# ', x.name)
 				log(' #|\n')
 			}
-		)
+			)
+		}
+		console.log(out)
 	}
-	console.log(out)
 }
 
 // 0,.g;console\.log;norm I//
 
+//*
+printNovaWithVarValues()
 printNova.printInitFacts(stacks)
+//*/
