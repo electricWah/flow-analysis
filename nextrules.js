@@ -1,6 +1,6 @@
 import { inspect } from 'util'; // or: import util from 'util'
-// import printNova from './printNova.js';
-// import { parseInit } from './myteParse.js'
+import printNova from './printNova.js';
+import { parseInit } from './myteParse.js'
 
 
 function sugar(s, b) {

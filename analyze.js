@@ -1,3 +1,4 @@
+// FIXME !!! this is wrong! does not take loops into acount
 import { inspect } from 'util'; // or: import util from 'util'
 // import printNova from './printNova.js';
 // import { parseInit } from './myteParse.js'
@@ -51,10 +52,12 @@ let pop = (stack) => stacks[stack].pop();
 // function Fact(stack, items) { return { stack: stack, fact: items.split(' ') } };
 
 
+let factId = 0;
 class Fact {
 	stack;
 	fact;
 	// vars = new Set();
+	id = factId++;
 	constructor(stack, items) {
 		let tmp;
 		this.stack  = stack;
@@ -66,9 +69,11 @@ class Fact {
 
 
 // const Rule = (causes, effects) => { return { causes: causes, effects: effects } };
+let ruleId = 0;
 class Rule {
 	causes;
 	effects;
+	id = ruleId++;
 	constructor(causes, effects) {
 		this.causes  = causes;
 		this.effects = effects;
@@ -208,6 +213,7 @@ function doRule(rule) {
 * @param {Fact} fact
 * @param {Rule} rule
 */
+// const testedCache();
 function couldMatch(fact, rule) {
 	causeLoop:
 	for (const cause of rule.causes) {
@@ -224,6 +230,9 @@ function couldMatch(fact, rule) {
 			// can deduce possible tokens and reject the match here
 			if (isVar(fact.fact[i])) {
 				if (fact.fact[i].potentialValues) {
+					// FIXME is this correct?
+					// we reject the match bc the var doesn't have the pattern
+					// symbol, but what if it just hasn't propagated yet?
 					if (!fact.fact[i].potentialValues.has(pattern[i]))
 						continue causeLoop;
 				}
