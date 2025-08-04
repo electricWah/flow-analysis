@@ -464,6 +464,7 @@ for (let fact of toPropagate.values()) {
 				// NOTE we don't need to test this rule again,
 				// so we can promote it to unconditional
 				delete fact.nextRules.conditional[conditioni];
+				fact.nextRules.unconditional ??= [];
 				fact.nextRules.unconditional.push(rule);
 			}
 			conditioni++;

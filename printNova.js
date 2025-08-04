@@ -69,6 +69,45 @@ function printRule (rule) {
 	console.log(out)
 }
 
+const formatFact = f => `:${f.stack}: ` + f.fact.join(' ');
+
+function printNovaWithVarValues(rules, Var) {
+	Reflect.defineProperty(Var.prototype, 'toString', {
+		value: function() {
+			return this.name;
+		}
+	})
+
+	for (const rule of rules) {
+		// printNova.printRule(rule)
+		// console.log(rule)
+		let out = ''
+		out += '|'
+		let log = (...args) => args.forEach(x => out += x)
+		for (const cause of rule.causes) {
+			log('  ', formatFact(cause))
+		}
+		log('  |')
+		for (const effect of rule.effects) {
+			log('  ', formatFact(effect))
+		}
+		log('\n')
+		for (const cause of rule.causes) {
+			cause.fact.values().filter(v => v instanceof Var).forEach(
+				x => {
+					if (x.potentialValues)
+						log('  |# ', x.name, '=', Array.from(x.potentialValues))
+					else
+						log('  |# ', x.name)
+					log(' #|\n')
+				}
+			)
+		}
+		console.log(out)
+	}
+}
+
 printNova.printRule = printRule;
 printNova.printInitFact = printInitFact;
 printNova.printInitFacts = printInitFacts;
+printNova.printNovaWithVarValues = printNovaWithVarValues;
