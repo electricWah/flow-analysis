@@ -1,0 +1,89 @@
+|- greek salad -|
+    - chop
+        - romaine lettuce
+    - slice
+        - red onions
+    - dice
+        - cucumbers
+    - chop
+        - bell peppers
+    - cube
+        - feta cheese
+    - pit
+        - kalamata olives
+    - halve
+        - cherry tomatoes
+    - pour
+        - salad dressing
+    - drizzle
+        - olive oil
+
+|| ~ greek salad ~
+
+
+
+
+|:desired cut: $cut :cutting board: $ingredient :kitchen knife:|
+    :bowl: $cut $ingredient
+|:desired cut: $cut :cutting board: $an $ingredient :kitchen knife:|
+    :bowl: $cut $an $ingredient
+
+|:chop: $ingredient|
+    :desired cut: chopped
+    :cutting board: $ingredient
+    :kitchen knife:
+|:chop: $an $ingredient|
+    :desired cut: chopped
+    :cutting board: $an $ingredient
+    :kitchen knife:
+
+|:slice: $ingredient|
+    :desired cut: sliced
+    :cutting board: $ingredient
+    :kitchen knife:
+|:slice: $an $ingredient|
+    :desired cut: sliced
+    :cutting board: $an $ingredient
+    :kitchen knife:
+
+|:dice: $ingredient|
+    :desired cut: diced
+    :cutting board: $ingredient
+    :kitchen knife:
+|:dice: $an $ingredient|
+    :desired cut: diced
+    :cutting board: $an $ingredient
+    :kitchen knife:
+
+|:halve: $ingredient|
+    :desired cut: halved
+    :cutting board: $ingredient
+    :kitchen knife:
+|:halve: $an $ingredient|
+    :desired cut: halved
+    :cutting board: $an $ingredient
+    :kitchen knife:
+
+|:cube: $ingredient|
+    :desired cut: cubed
+    :cutting board: $ingredient
+    :kitchen knife:
+|:cube: $an $ingredient|
+    :desired cut: cubed
+    :cutting board: $an $ingredient
+    :kitchen knife:
+
+|:pit: $ingredient|
+    :desired cut: pitted
+    :cutting board: $ingredient
+    :kitchen knife:
+|:pit: $an $ingredient|
+    :desired cut: pitted
+    :cutting board: $an $ingredient
+    :kitchen knife:
+
+|:pour: $ingredient    | :bowl: $ingredient
+|:pour: $an $ingredient| :bowl: $an $ingredient
+
+|:drizzle: $ingredient    | :bowl: a drizzle of $ingredient
+|:drizzle: $an $ingredient| :bowl: a drizzle of $an $ingredient
