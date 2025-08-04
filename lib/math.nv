@@ -1,0 +1,11 @@
+¦:@math: add $a $b ¦
+    ⁝@js⁝ f('@math', ""+(Number($a) + Number( $b )) );
+
+¦:@math: subtract $a $b ¦
+    ⁝@js⁝ f('@math', ""+(Number($a) - Number($b)));
+
+¦:@math: multiply $a $b ¦
+    ⁝@js⁝ f('@math', ""+(Number($a) * Number( $b )) );
+
+¦:@math: divide $a $b ¦
+    ⁝@js⁝ f('@math', ""+(Number($a) / Number($b)));

@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 
 // myte parser and compiler
-import { detectSigils, doVars, expandMacros, pullSnippets } from "../compiler.js";
+import { handleIncludes, detectSigils, doVars, expandMacros, pullSnippets } from "../compiler.js";
 import parser from "../parser.js";
 //////////////////////
 
@@ -23,7 +23,7 @@ export function parseInit( classes ) {
 
 	async function parseMyteSyntaxFile (path) {
 		const code = await readFile(path, "utf-8")
-		let rawparsed = getParsed(code)
+		let rawparsed = await getParsed(code)
 		let stacks = rawparsed.stacks
 		for (const [stack, items] of Object.entries(stacks)) {
 			stacks[stack] = items.map(s=> s.split(' '));
@@ -31,8 +31,8 @@ export function parseInit( classes ) {
 		return {rules: makeAst(rawparsed), stacks: stacks};
 	}
 
-	function parseMyteSyntax (code) {
-		let rawparsed = getParsed(code)
+	async function parseMyteSyntax (code) {
+		let rawparsed = await getParsed(code)
 		let stacks = rawparsed.stacks
 		for (const [stack, items] of Object.entries(stacks)) {
 			stacks[stack] = items.map(s=> s.split(' '));
@@ -60,10 +60,11 @@ export function parseInit( classes ) {
 
 
 
-function getParsed(code) {
+async function getParsed(code) {
 	const p = parser();
     let ast = p.parse(code);
-    // ast = await handleIncludes(ast, loadPath, p);
+	debugger;
+    ast = await handleIncludes(ast, p => readFile(p, "utf-8"), p);
     detectSigils(ast);
     expandMacros(ast);
     let { rules, stacks, snippet } = pullSnippets(ast);
