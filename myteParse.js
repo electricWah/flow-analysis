@@ -63,7 +63,7 @@ export function parseInit( classes ) {
 async function getParsed(code) {
 	const p = parser();
     let ast = p.parse(code);
-	debugger;
+	// debugger;
     ast = await handleIncludes(ast, p => readFile(p, "utf-8"), p);
     detectSigils(ast);
     expandMacros(ast);
