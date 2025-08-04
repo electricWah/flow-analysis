@@ -132,6 +132,7 @@ function couldMatch(fact, rule) {
 			if (fact.fact[i] != pattern[i])
 				continue causeLoop;
 		}
+		cause.triggered = true;
 		return matchType;
 	}
 	return false;
@@ -172,11 +173,11 @@ function propagate(fact, rule) {
 
 // }}}
 export function doPropagation(rules, stacks) {
-	printStacks(stacks); // TODO remove
+	// printStacks(stacks); // TODO remove
 
 	processRulesVars(rules);
 	//////
-	debugger;
+	// debugger;
 
 
 
@@ -217,16 +218,18 @@ export function doPropagation(rules, stacks) {
 		return true;
 	}
 
+	function shouldPropagateRule(rule) {
+		return rule.triggered || rule.causes.every(cause => cause.triggered);
+	}
+
 	let comparisons = 0;
-	debugger;
+	// debugger;
 	for (let fact of toPropagate.values()) {
 
 		function propagateRule (fact, rule) {
-			propagate(fact, rule);
-			// debugger;
 			rule.effects.forEach(x => toPropagate.add(x));
 			rule.triggered = true;
-			fact.propagated = true;
+			fact.propagated = true; // a fact shouldn't be marked if it only propagates to rules that never trigger
 			propagated = true;
 		}
 
@@ -262,7 +265,9 @@ export function doPropagation(rules, stacks) {
 
 		if (fact.nextRules.unconditional) {
 			for (const rule of fact.nextRules.unconditional) {
-				propagateRule(fact, rule)
+				propagate(fact, rule);
+				if (shouldPropagateRule(rule))
+					propagateRule(fact, rule)
 			}
 		}
 		if (fact.nextRules.conditional) {
@@ -270,7 +275,10 @@ export function doPropagation(rules, stacks) {
 			for (const rule of fact.nextRules.conditional) { 
 				comparisons++;
 				if (couldMatch(fact, rule)) {
-					propagateRule(fact, rule)
+					propagate(fact, rule);
+					if (shouldPropagateRule(rule)) {
+						propagateRule(fact, rule)
+					}
 					// NOTE we don't need to test this rule again,
 					// so we can promote it to unconditional
 					delete fact.nextRules.conditional[conditioni];
@@ -284,7 +292,7 @@ export function doPropagation(rules, stacks) {
 			markPropagated(fact);
 	}
 	console.error("comparisons:", comparisons)
-	debugger;
+	// debugger;
 	// i'm 90% sure that according to the Set.values() spec, the above loop terminating
 	// means the system is at fixed point (ie. it's done cooking). need to verify
 	// though
